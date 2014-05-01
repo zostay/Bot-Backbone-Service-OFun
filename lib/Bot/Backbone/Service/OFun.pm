@@ -4,6 +4,41 @@ package Bot::Backbone::Service::OFun;
 
 # ABSTRACT: A set of Bot::Backbone services optimized for fun
 
+=head1 SYNOPSIS
+
+    service code_name => (
+        service         => 'OFun::CodeName',
+        adjectives_file => 'adjectives.txt',
+        nouns_file      => 'nouns.txt',
+        db_dsn          => "dbi:SQLite:codename.db",
+    );
+    
+    service dice => (
+        service => 'OFun::Dice',
+    );
+    
+    service insult => (
+        service  => 'OFun::Insult',
+    );
+
+    service "karma" => (
+        service     => 'OFun::Karma',
+        db_dsn      => "dbi:SQLite:karma.db",
+    );
+
+    service "hailo" => (
+        service    => 'OFun::Hailo',
+        brain_file => "hailo.db",
+    );
+
+    dispatcher "chatroom" => as {
+        redispatch_to 'code_name';
+        redispatch_to 'dice';
+        redispatch_to 'insult';
+        redispatch_to 'karma';
+        redispatch_to 'hailo';
+    };
+
 =head1 DESCRIPTION
 
 This is a collection of modules designed for use with L<Bot::Backbone> to help
@@ -57,6 +92,12 @@ lowest scores or score for a specific item with the C<!score> command. This
 requires some storage to track the scores.
 
 =back
+
+=head1 CAVEATS
+
+This release also include L<Bot::Backbone::Service::Role::Storage>, which does
+not belong here. It will likely be moved into a seperate distribution in the
+future.
 
 =cut
 

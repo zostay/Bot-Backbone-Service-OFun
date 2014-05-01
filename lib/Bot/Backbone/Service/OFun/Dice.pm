@@ -13,6 +13,82 @@ use Readonly;
 Readonly my $DICE_NOTATION => qr/(?<count>\d+)?d(?<sides>\d+)(?<modifier>[+-]\d+)?/i;
 Readonly my @COIN_SIDES => qw( heads tails );
 
+# ABSTRACT: Tools for rolling dice, flipping coins, choosing, and shuffling
+
+=head1 SYNOPSIS
+
+    # in your bot config
+    service dice => (
+        service => 'OFun::Dice',
+    );
+
+    dispatcher chatroom => as {
+        redispatch_to 'dice';
+    };
+
+    # in chat
+    alice> !roll
+    bot> Rolled 4
+    alice> !roll 2d4+3
+    bot> Rolled 7
+    alice> !flip
+    bot> Flipped 1 times: heads
+    alice> !flip 4
+    bot> Flipped 4 times: tails, tails, tails, heads
+    alice> !choose 2 alice bob chuck dick ed
+    bot> I choose ed, chuck
+    alice> !choose alice bob chuck dick ed
+    bot> I choose dick
+    alice> !shuffle alice bob chuck dick ed
+    bot> I choose bob, alice, ed, dick, chuck
+
+=head1 DESCRIPTION
+
+This service provides a number of tools related to randomly generating numbers, coin flips, choosing items, etc.
+
+=head1 DISPATCHER
+
+=head2 !roll
+
+    !roll
+    !roll 2d6
+    !roll 4d20+12
+
+Generates a dice roll. If no arguments are given, it's the same as rolling a
+single 6-sided die. If you specify dice notation, it will roll the dice
+specified.
+
+=head2 !flip
+
+    !flip
+    !flip 5
+
+Flips a coin or several. If no arguments are given, it will flip a single coin
+and report the outcome. If a number is given, it will flip that many coins.
+
+=head2 !choose
+
+    !choose 3 a b c d e
+    !choose a b c d e
+
+Choose 1 or more items from a list. If the first argument is a number, it
+will choose that many items from the list. If the first argument is not a
+number, it will choose a single item.
+
+=cut
+
+=head2 !shuffle
+
+    !shuffle a b c d e
+
+This is identical to:
+
+    !choose 5 a b c d e
+
+It choose all items, but shuffles them in the process.
+
+=cut
+
 service_dispatcher as {
     command '!roll' => given_parameters {
         parameter 'dice' => (
@@ -38,6 +114,14 @@ service_dispatcher as {
         parameter 'items' => (match_original => qr/.+/ );
     } respond_by_method 'choose_all';
 };
+
+=head1 METHODS
+
+=head2 roll_dice
+
+Implements the C<!roll> and C<!flip> commands.
+
+=cut
 
 sub roll_dice {
     my ($self, $message) = @_;
@@ -86,6 +170,12 @@ sub roll_dice {
     return @messages;
 }
 
+=head2 flip_coin
+
+Implements the C<!flip> command by passing "d2" as the dice notation to L</roll_dice>.
+
+=cut
+
 sub flip_coin {
     my ($self, $message) = @_;
 
@@ -93,6 +183,12 @@ sub flip_coin {
     $message->parameters->{dice} = $count . 'd2';
     return $self->roll_dice($message);
 }
+
+=head2 choose_n
+
+Implements the C<!choose> and C<!shuffle> commands.
+
+=cut
 
 sub choose_n {
     my ($self, $message) = @_;
@@ -110,6 +206,13 @@ sub choose_n {
 
     return "I choose " . join(', ', @items[ 0 .. $count-1 ]);
 }
+
+=head2 choose_all
+
+Implements the C<!shuffle> command by counting the number of arguments
+and asking L</choose_n> to pick that many items.
+
+=cut
 
 sub choose_all {
     my ($self, $message) = @_;

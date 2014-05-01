@@ -12,11 +12,79 @@ use MooseX::Types::Path::Class;
 use Digest::SHA qw( sha1 );
 use List::Util qw( reduce );
 
+# ABSTRACT: Assign code names to words and phrases for fun and profit
+
+=head1 SYNOPSIS
+
+    # in your bot config
+    service code_name => (
+        service         => 'OFun::CodeName',
+        nouns_file      => 'nouns.txt',
+        adjectives_file => adjectives.txt',
+        db_dsn          => 'dbi:SQLite:codename.db',
+    );
+
+    dispatcher chatroom => as {
+        redispatch_to 'code_name';
+    };
+
+    # in chat
+    alice> !codename bob
+    bot> exploding chariot
+    alice> !codename exploding chariot
+    bot> bob
+
+=head1 DESCRIPTION
+
+Have you ever wanted to assign really horrible code names to your projects? Your
+clients? Your coworkers? Well, now is your chance. Just put this little baby
+into your bot config and let it assign code names to your heart's content.
+
+To work, you must supply it with your own list of nouns and adjectives (not
+included) and a database, which is used to store the code names that have been
+assigned. The code names are assigned in a standard-ish way so they will be
+reassigned the same way every time, so long as you continue using the same noun
+and adjective list. The database is used to remember the code name's reversal
+and also to keep the code names the same if you do choose to modify your word
+lists for some reason (say to remove some NSFW word or to add an NSFW word you
+forgot to add in the first place).
+
+=head1 DISPATCHER
+
+=head2 !codename
+
+    !codename phrase
+    !codename code name
+
+This command is used to generate a new codename or to tell you what a code name
+refers to. You don't need to quote your words or anything, just give it as short
+or as long a phrase as you want named and it will respond.
+
+=cut
+
 service_dispatcher as {
     command '!codename' => given_parameters {
         parameter 'phrase' => ( match_original => qr/.+/ );
     } respond_by_method 'assign_codename';
 };
+
+=head1 ATTRIBUTES
+
+=head2 adjectives_file
+
+=head2 nouns_file
+
+These are files that provide adjectives and nouns to the service. The words
+should be listed one-per-line in the file with no blanks. Extra whitespace on
+either side of each word will be trimmed.
+
+=head2 adjectives
+
+=head2 nouns
+
+These are arrays of the loaded word lists.
+
+=cut
 
 for my $part (qw( adjective noun )) {
     my $part_file = "${part}s_file";
@@ -46,6 +114,15 @@ for my $part (qw( adjective noun )) {
     );
 }
 
+=head1 METHODS
+
+=head2 load_schema
+
+Creates the C<codenames> file. It uses DDL SQL that should be compatible with
+SQLite and MySQL databases.
+
+=cut
+
 sub load_schema {
     my ($self, $conn) = @_;
 
@@ -60,6 +137,12 @@ sub load_schema {
         ]);
     });
 }
+
+=head2 assign_codename
+
+This implements the C<!codename> command.
+
+=cut
 
 sub assign_codename {
     my ($self, $message) = @_;
@@ -85,6 +168,14 @@ sub assign_codename {
         return "Too many duplicates. Can't come up with a code name for that. Maybe you need to expand your adjectives or nouns list.";
     }
 }
+
+=head2 generate_code_name
+
+  my $codename = $self->generate_code_name($phrase);
+
+Given a string, it returns a new code name for that string.
+
+=cut
 
 sub generate_code_name {
     my ($self, $phrase) = @_;
@@ -118,6 +209,16 @@ sub generate_code_name {
     return;
 }
 
+=head2 find_key
+
+  my $alias = $self->find_key($key);
+
+Given a code name or a phrase that has been assigned a code name, it returns the
+alias (i.e., the original phrase for code names and the code name assigned for
+phrases). If that's not a stored alias, it returns undef.
+
+=cut
+
 sub find_key {
     my ($self, $key) = @_;
 
@@ -134,6 +235,19 @@ sub find_key {
     return $alias;
 }
 
+=head2 store_key
+
+  $self->find_key($key, $alias, $is_code_name);
+
+Stores a key/alias pair. When a code name is generated, it will be stored twice,
+once to point the code name to the phrase and once to point the phrase back to
+the code name. The C<$is_code_name> flag is used to indicate whether the C<$key>
+is a code name or a phrase in this call. This flag is not used for anything
+right now, but might be used for something in the future and is used to at least
+allow you to discern which is the code name and which is not.
+
+=cut
+
 sub store_key {
     my ($self, $key, $alias, $iscn) = @_;
 
@@ -144,6 +258,12 @@ sub store_key {
         ], undef, $key, $alias, $iscn);
     });
 }
+
+=head2 initialize
+
+No op.
+
+=cut
 
 sub initialize { }
 
