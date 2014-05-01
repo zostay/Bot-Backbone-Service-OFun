@@ -7,6 +7,90 @@ with qw(
     Bot::Backbone::Service::Role::Storage
 );
 
+# ABSTRACT: Keep track of your channel's favorite things
+
+=head1 SYNOPSIS
+
+    # in your bot config
+    service karma => (
+        service => 'OFun::Karma',
+        db_dsn  => 'dbi:SQLite:karma.db',
+    );
+
+    disapatcher chatroom => as {
+        redispatch_to 'karma';
+    }
+
+    # in chat
+    alice> bob++ that was hilarious
+    bob> !best
+    bot> alice: 23
+         bob: 14
+         rob: 7
+         bobby: 6
+    bob> !score_alias bobby bob
+    bot> Scores for "bobby" will count for "bob" instead.
+    alice> !score_alias rob bob
+    bot> Scores for "rob" will count for "bob" instead.
+    bob> !score bob
+    bot> bob: 27
+    bob> !score bobby
+    bot> bob: 27
+    bob> !score_alias bob
+    bot> Scores for "bob" also include "bobby" and "rob".
+    bob> !score_unalias rob
+    bot> Scores for "rob" will count for "rob" now.
+    alice> "made up stuff"--
+    bob> !worst
+    bot> made up stuff: -1
+         rob: 7
+         bob: 20
+         alice: 23
+
+=head1 DESCRIPTION
+
+A common idiom in group chat (at least among tech geeks) is to use ++ and -- to show appreciation and derision. Now, you can have a bot that tracks that. It will show you a best ten list, a worst ten list, and the score of any particular word or phrase. 
+
+You can also provide aliases, just in case a particular thing is referred to in more than one way and you want to track those scores together. The scores are still tracked for the original words, but tallied together while aliased. This way, if someone creates a bad or false alias, you can unalias it later without losing how things were scored in the meantime.
+
+=head1 DISPATCHER
+
+=head2 !score
+
+    !score thing
+    !score
+
+With an argument, this command reports the score for it. Without an argument, it shows the best ten list, just like C<!best>.
+
+=head2 !best
+
+This command takes no arguments and shows the best ten list.
+
+=head2 !worst
+
+This command takes no argumenst and shows the worst ten list.
+
+=head2 !score_alias
+
+    !score_alias this that
+    !score_alias this
+
+With two arguments, this command will establish an alias from one word or phrase to another. You need to make sure to quote your phrases if they contain more than one word. Note that when it creates the alias, it will remove that word from either side of any other alias. Aliases cannot be chained.
+
+If only a single argument is given (again, make sure you quote your phrases), it will report if there are any score aliases to or from that word or phrase.
+
+=head2 !score_unalias
+
+    !score_unalias this
+
+This will delete any alias from this to something else.
+
+=head2 Other Conversation
+
+Finally, any other conversation is monitored to see if it contains ++ or -- notation. Anytime a word or quoted phrase contains a ++ or -- at the end of it, the score for that word or phrase will be incremented or decremented (respectively).
+
+=cut
+
 service_dispatcher as {
     command '!score' => given_parameters {
         parameter 'thing' => ( match_original => qr/.+/ );
@@ -30,6 +114,14 @@ service_dispatcher as {
     not_command run_this_method 'update_scores';
 };
 
+=head1 METHODS
+
+=head2 load_schema
+
+Called when making database connections to create tables needed to store scores and aliases.
+
+=cut
+
 sub load_schema {
     my ($self, $conn) = @_;
 
@@ -51,6 +143,12 @@ sub load_schema {
         ]);
     });
 }
+
+=head2 update_scores
+
+This implements the tracking of ++ and -- to update scores from regular conversation.
+
+=cut
 
 sub update_scores {
     my ($self, $message) = @_;
@@ -101,6 +199,12 @@ sub update_scores {
     }
 }
 
+=head2 score_of_thing
+
+Reports the score of a thing, including any aliased scores.
+
+=cut
+
 sub score_of_thing {
     my ($self, $message) = @_;
 
@@ -131,6 +235,12 @@ sub score_of_thing {
 
     return "$thing: $score";
 }
+
+=head2 show_alias_of_this
+
+Used to implement C<!score_alias> with a single argument.
+
+=cut
 
 sub show_alias_of_this {
     my ($self, $message) = @_;
@@ -180,6 +290,12 @@ sub show_alias_of_this {
     return @messages;
 }
 
+=head2 alias_this_to_that
+
+Implements C<!score_alias> with two arguments.
+
+=cut
+
 sub alias_this_to_that {
     my ($self, $message) = @_;
 
@@ -201,6 +317,12 @@ sub alias_this_to_that {
     return qq[Scores for "$this" will count for "$that" instead.];
 }
 
+=head2 unalias_this
+
+Implements the C<!score_unalias> command.
+
+=cut
+
 sub unalias_this {
     my ($self, $message) = @_;
 
@@ -216,10 +338,22 @@ sub unalias_this {
     return qq[Scores for "$this" will count for "$this" now.];
 }
 
+=head2 best_scores
+
+Implements the best 10 list.
+
+=cut
+
 sub best_scores {
     my ($self, $message) = @_;
     return $self->_n_scores(best => 10);
 }
+
+=head2 worst_scores
+
+Implements the worst 10 list.
+
+=cut
 
 sub worst_scores {
     my ($self, $message) = @_;
@@ -248,6 +382,12 @@ sub _n_scores {
 
     return map { "$_->[0]: $_->[1]" } @$scores;
 }
+
+=head2 initialize
+
+No op.
+
+=cut
 
 sub initialize { }
 
