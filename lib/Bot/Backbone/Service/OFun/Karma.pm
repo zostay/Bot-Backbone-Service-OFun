@@ -111,7 +111,7 @@ service_dispatcher as {
         parameter 'this' => ( match => qr/.+/ );
     } respond_by_method 'unalias_this';
 
-    not_command run_this_method 'update_scores';
+    not_command spoken run_this_method 'update_scores';
 };
 
 =head1 METHODS
