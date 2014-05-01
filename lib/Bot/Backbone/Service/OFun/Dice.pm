@@ -103,16 +103,11 @@ service_dispatcher as {
 
     command '!choose' => given_parameters {
         parameter 'count' => ( match => qr/\d+/ );
-        parameter 'items' => ( match_original => qr/.+/ );
     } respond_by_method 'choose_n';
 
-    command '!choose' => given_parameters {
-        parameter 'items' => (match_original => qr/.+/ );
-    } respond_by_method 'choose_n';
+    command '!choose' => respond_by_method 'choose_n';
 
-    command '!shuffle' => given_parameters {
-        parameter 'items' => (match_original => qr/.+/ );
-    } respond_by_method 'choose_all';
+    command '!shuffle' => respond_by_method 'choose_all';
 };
 
 =head1 METHODS
@@ -190,16 +185,17 @@ Implements the C<!choose> and C<!shuffle> commands.
 
 =cut
 
+sub _items {
+    my ($self, $message) = @_;
+    return shuffle grep /\S/, map { s/^\s+//; s/\s+$//; $_ } map { $_->original } $message->all_args;
+}
+
 sub choose_n {
     my ($self, $message) = @_;
 
     my $count = $message->parameters->{count} // 1;
-    my $items = $message->parameters->{items};
-    $items =~ s/^\s+//;
-    $items =~ s/\s+$//;
-
-    my @items = shuffle split /\s+/, $items;
-    my $n = scalar @items;
+    my @items = $self->_items($message);
+    my $n     = scalar @items;
 
     return "Wise-guy, eh? There's only $n items in that set, I can't pick $count items from it."
         if $count > $n;
@@ -217,10 +213,7 @@ and asking L</choose_n> to pick that many items.
 sub choose_all {
     my ($self, $message) = @_;
 
-    my $items = $message->parameters->{items};
-    $items =~ s/^\s+//;
-    $items =~ s/\s+$//;
-    my @items = split /\s+/, $items;
+    my @items = $self->_items($message);
 
     $message->parameters->{count} = scalar @items;
 
