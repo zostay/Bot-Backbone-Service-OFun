@@ -290,7 +290,7 @@ sub show_alias_of_this {
     push @messages, qq[Scores for "$this" are counted for "$scored_as" instead.]
         if $scored_as;
 
-    my $comma;
+    my $comma = '';
     if (@included_scores == 2) {
         $comma = ' and ';
     }
