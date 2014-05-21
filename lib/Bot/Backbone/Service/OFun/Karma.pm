@@ -144,6 +144,28 @@ sub load_schema {
     });
 }
 
+=head2 ok_name
+
+Given a name, returns true if it's scorable.
+
+=cut
+
+sub ok_name {
+    my ($self, $name) = @_;
+
+    # No empty string votes
+    return unless $name;
+
+    # No file permissions
+    return if $name =~ /^[d-][r-][w-][x-][r-][w-][sx-][r-][w-]?[tx-]?/;
+
+    # And there should be at least a couple word chars
+    return unless $name =~ /\w.*?\w/;
+
+    # OK!
+    return 1;
+}
+
 =head2 update_scores
 
 This implements the tracking of ++ and -- to update scores from regular conversation.
@@ -174,14 +196,7 @@ sub update_scores {
         if ($name =~ s/(\+\+|--)$//) {
             my $direction = $1 eq '++' ? +1 : -1;
 
-            # No empty string votes
-            next THING unless $name;
-
-            # No file permissions
-            next THING if $name =~ /^[d-][r-][w-][x-][r-][w-][sx-][r-][w-]?[tx-]?/;
-
-            # And there should be at least a couple word chars
-            next THING unless $name =~ /\w.*?\w/;
+            next THING unless $self->ok_name($name);
 
             $self->db_conn->txn(fixup => sub {
                 $_->do(q[
