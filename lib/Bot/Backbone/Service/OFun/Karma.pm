@@ -317,13 +317,27 @@ sub alias_this_to_that {
     my $this = $message->parameters->{this};
     my $that = $message->parameters->{that};
 
+    return "Those are both the same thing." if $this eq $that;
+
+    for ($this, $that) {
+        return qq[Sorry, but "$_" cannot be scored.] unless $self->ok_name($_);
+    }
+
     $self->db_conn->txn(fixup => sub {
-        $_->do(q[
+        my $dbh = $_;
+
+        $dbh->do(q[
             DELETE FROM karma_alias
             WHERE name = ? OR score_as = ? OR name = ?
         ], undef, $this, $this, $that);
 
-        $_->do(q[
+        # Make sure the name exists for JOINing too
+        $dbh->do(q[
+            INSERT OR IGNORE INTO karma_score(name, score)
+            VALUES (?, ?)
+        ], undef, $_, 0) for ($this, $that);
+
+        $dbh->do(q[
             INSERT INTO karma_alias(name, score_as)
             VALUES (?, ?)
         ], undef, $this, $that);
