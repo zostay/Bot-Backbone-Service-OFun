@@ -402,6 +402,7 @@ sub _n_scores {
          LEFT JOIN karma_score kas ON ka.name = kas.name
              WHERE kb.name IS NULL
           GROUP BY ks.name
+            HAVING ks.score + COALESCE(SUM(kas.score), 0) != 0
           ORDER BY SUM(ks.score) $direction
              LIMIT $n
         ]);
