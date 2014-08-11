@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+    * Documentation: Removed the CAVEAT section of Bot::Backbone::Service::OFun
+      as it contains a false statement.
+
 0.142230  2014-08-11 10:05:24-05:00 America/Chicago
 
     * Initial release.
