@@ -93,12 +93,6 @@ requires some storage to track the scores.
 
 =back
 
-=head1 CAVEATS
-
-This release also include L<Bot::Backbone::Service::Role::Storage>, which does
-not belong here. It will likely be moved into a seperate distribution in the
-future.
-
 =cut
 
 1;
