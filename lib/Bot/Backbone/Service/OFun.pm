@@ -55,7 +55,7 @@ Here's a list of the included services and what they each do:
 
 =over
 
--item *
+=item *
 
 L<Bot::Backbone::Service::OFun::CodeName>. This is a service that gives you a
 C<!codename> command that will generate a code name for a word or phrase, which
@@ -101,4 +101,4 @@ future.
 
 =cut
 
-__PACKAGE__->meta->make_immutable;
+1;
